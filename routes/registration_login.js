@@ -27,6 +27,7 @@ var login = function(req, res, next) {
                             var token = jwt.sign(u, token_config.secret, { expiresInMinutes: 120 });
 
                             res.json({error: false, body: "Yay! I will now send you a token", token: token});
+                            return;
                         }
                     }
                     res.json({error: true, body: "Invalid Email/Password"});
