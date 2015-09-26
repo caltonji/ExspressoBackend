@@ -15,6 +15,14 @@ db.once('open', function callback () {
 });
 
 
+//Models
+var Order = require('./models/order');
+var MenuItem = require('./models/menu_item');
+var OrderItem = require('./models/order_item');
+var Review = require('./models/review');
+var User = require('./models/user');
+
+
 var routes = require('./routeManager');
 
 var app = express();
