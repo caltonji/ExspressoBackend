@@ -17,5 +17,5 @@ exports.makeMenuItem = function(req, res, next) {
         } else {
             res.json({added:doc});
         }
-    })
+    });
 }

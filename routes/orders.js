@@ -16,6 +16,7 @@ var Order = require('../models/order');
 var Review = require('../models/review');
 var token_config = require('../config/token');
 
+//TODO: Add support for paging, add support for multiple options of status types
 exports.get = function(req, res, next) {
     token_config.checkRouteForToken(req,res, function(req, res, token) {
         if (token) {
@@ -25,31 +26,47 @@ exports.get = function(req, res, next) {
             var sortJson = {'dateCreated': -1};
             var fieldsString = "status dateLastStatusChange tip reviews location";
 
-            var num_items = req.query.num_items;
+            var numOrders = req.query.numOrders;
 
             //fix non valid data and make it default values
-            if (!num_items || num_items < 0)
-                num_items = 20;
+            if (!numOrders) numOrders = 20;
+            if (numOrders < 0) {
+                res.json({error: true, body:"illegal numOrders value"});
+                return;
+            }
 
             var statusType = req.query.statusType;
             var orderStatusTypes = 'Created Accepted InProgress Completed CanceledUser CanceledSys Failed'.split(' ');
 
-            if (statusType && orderStatusType.indexOf(statusType) > -1)
-                queryJson = {"status": statusType};
+            if (statusType && orderStatusTypes.indexOf(statusType) > -1)
+                queryJson.status = statusType;
 
             var customer = req.query.customer;
-            if (customer)
-                queryJson[customer] = new ObjectId(customer);
+            if (customer) {
+                if (ObjectId.isValid(customer)) {
+                    queryJson.customer = new ObjectId(customer);
+                } else {
+                    res.json({error: true, body: "bad customer value"});
+                    return;
+                }
+            }
+
 
             var deliverer = req.query.deliverer;
-            if (deliverer) queryJson[deliverer] = new ObjectId(deliverer);
-
+            if (deliverer) {
+                if (ObjectId.isValid(deliverer)) {
+                    queryJson.deliverer = new ObjectId(deliverer);
+                } else {
+                    res.json({error:true,body:"bad deliverer value"});
+                    return;
+                }
+            }
             //requesting for all users
-            Order.find(queryJson).sort(sortJson).limit(num_items).select(fieldsString).exec(function (err, posts) {
+            Order.find(queryJson).sort(sortJson).limit(numOrders).select(fieldsString).exec(function (err, posts) {
                 if (err) {
                     res.json({error: true, body: "error in accessing db"});
                 } else {
-                    res.json(posts);
+                    res.json({error:false, body:null, orders:posts});
                 }
             });
         } else {
@@ -84,7 +101,7 @@ exports.new = function(req, res, next) {
                         if (err) {
                             res.json({error: true, body: err});
                         }
-                        res.json({SavedOrder: savedOrder});
+                        res.json({error:false,body:null,SavedOrder: savedOrder});
                     });
 
                 })
