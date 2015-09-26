@@ -9,10 +9,11 @@ var orderStatusTypes = 'Created Accepted InProgress Completed CanceledUser Cance
 var blameTypes = 'DeliverAccepted CustomerAccepted DeliverNoAccept CustomerNoAccept Both'.split(' ');
 
 var OrderSchema = new Schema({
-    status: {type: String, enum: orderStatusTypes},
+    status: {type: String, enum: orderStatusTypes, default: 'Created'},
     dateCreated: {type: Date, default: Date.now},
     dateAccepted: {type: Date},
     dateCompleted: {type: Date},
+    dateLastStatusChange: {type: Date},
     blame: {type: String, enum: blameTypes},
     items: [
         {type: mongoose.Schema.Types.ObjectId, ref: 'OrderItem'}

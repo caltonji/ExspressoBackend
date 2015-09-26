@@ -19,7 +19,7 @@ router.post('/register', logRoute.register);
  */
 var orderRoute = require('./routes/orders');
 
-router.get('/orders', orderRoute.getOrders);
-router.get('/orders/all', orderRoute.getAll);
+router.get('/orders', orderRoute.get);
+router.post('/orders/new', orderRoute.new);
 
 module.exports = router;

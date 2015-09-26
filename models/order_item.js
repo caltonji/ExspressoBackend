@@ -7,7 +7,7 @@ var Schema = mongoose.Schema;
 var OrderItemTypes = 'Tall Grande Venti'.split(' ');
 
 var OrderItemSchema = new Schema({
-    customer: {type: mongoose.Schema.Types.ObjectId, ref: 'MenuItem'},
+    menuItem: {type: mongoose.Schema.Types.ObjectId, ref: 'MenuItem'},
     size: {type: String, enum: OrderItemTypes}
 });
 
