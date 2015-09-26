@@ -18,7 +18,7 @@ var login = function(req, res, next) {
                     res.json({error: true, body: "Invalid Email/Password"});
                 } else {
                     for (var i = 0; i < users.length; i++) {
-                        u = users[i];
+                        var u = users[i];
                         var potentialHash = hashing.calculateHash(u.passwordSalt + req.body.password);
                         if (u.passwordHash == potentialHash) {
                             u.passwordHash = null;
