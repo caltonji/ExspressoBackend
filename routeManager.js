@@ -12,6 +12,11 @@ var logRoute = require('./routes/registration_login');
 router.post('/login', logRoute.login);
 router.post('/register', logRoute.register);
 
+/*
+Info about the user routes will go here
+ */
+var userRoutes = require('./routes/users');
+router.get('/me',userRoutes.myInfo);
 
 
 /*
@@ -35,5 +40,6 @@ router.post('/orders/submitReview', orderRoute.submitOrderReview);
  */
 var menuItemRoutes = require('./routes/menuItems');
 router.get('/populate', menuItemRoutes.makeMenuItem);
+router.get('/menu', menuItemRoutes.getMenuItems);
 
 module.exports = router;

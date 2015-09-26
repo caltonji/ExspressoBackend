@@ -77,6 +77,12 @@ exports.get = function(req, res, next) {
                 return;
             }
 
+            if (req.query.onlyMine) {
+                queryJson = {
+                    "_id": token._id
+                };
+            }
+
             //requesting for all users
             Order.find(queryJson).sort(sortJson).limit(numOrders).select(fieldsString).exec(function (err, posts) {
                 if (err) {
@@ -99,13 +105,14 @@ exports.get = function(req, res, next) {
 var updateMenuItemsForOrderList = function(orders, callback) {
     var updated = 0;
     for (var i = 0; i < orders.length; i++) {
-        updateMenuItemsForItemList(orders[i].items, function(items) {
-            orders[i].items = items;
-            if (++updated == orders.length) {
-                callback(orders);
-            }
-        });
-
+        updateMenuItemsForItemList(orders[i].items, (function(i){
+            return function(items) {
+                    orders[i].items = items;
+                    if (++updated == orders.length) {
+                        callback(orders);
+                    }
+                };
+        })(i));
     }
 }
 
@@ -113,17 +120,24 @@ var updateMenuItemsForItemList = function(items, callback) {
     var updated = 0;
     for (var i = 0; i < items.length; i++) {
         if (items[i] && checkID("" + items[i].menuItem) > 0) {
-            MenuItem.findOne({_id : new ObjectId(items[i].menuItem)}, function(err, doc) {
-                if (err) {
-                    callback(false);
-                    return;
-                } else {
-                    items[i].menuItem = doc;
-                    if (++updated == items.length) {
-                        callback(items);
+            MenuItem.findOne({_id : new ObjectId(items[i].menuItem)}, (function(i, items, callback){
+                return function(err, doc) {
+                    if (err) {
+                        callback(false);
+                        return;
+                    } else {
+                        var temp = items;
+                        console.log(doc);
+                        console.log(temp[i].menuItem);
+                        //temp[i].menuItem = JSON.stringify(doc);
+                        temp[i].menuItem = 5;
+                        console.log(JSON.stringify(doc.toObject()));
+                        if (++updated == temp.length) {
+                            callback(temp);
+                        }
                     }
                 }
-            });
+            })(i, items, callback));
         } else {
             updated++;
             i++;
@@ -185,6 +199,7 @@ var checkItems = function(items, callback) {
             return;
         }
         console.log("about to look in MenuItem for " + item.menuItem);
+        const size = item.size;
         MenuItem.findById(new ObjectId(item.menuItem), function (err, doc) {
             if (err) {
                 console.log("error in lookup: " + err);
@@ -197,7 +212,7 @@ var checkItems = function(items, callback) {
             }
             var orderItem = {};
             orderItem.menuItem = doc;
-            orderItem.size = item.size;
+            orderItem.size = size;
             order_items.push(orderItem);
             if (++inserted == items.length) {
                 callback(order_items);
