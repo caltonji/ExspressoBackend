@@ -67,7 +67,7 @@ API
     }
 
 
-`Get /order/` (View recent orders)
+`GET /order/` (View recent orders)
 * Input
   * `numOrders`: optional. Default 20. Number of items to return
   * `statusType`: optional. Type of status order you want. (Created Accepted InProgress Completed CanceledUser CanceledSys Failed)
@@ -85,6 +85,43 @@ API
                "dateLastStatusChange": "2015-09-26T10:36:22.965Z",
                "status":}]
 
+
+`POST /order/cancel` (Cancel a particular order)
+* Input
+  * `orderID`: id of the order to cancel
+* Output (JSON)
+  * `error`: whether an error occured (boolean)
+  * `body`: description of the error or success
+ 
+`POST /order/accept` (Accept a particular order to deliver)
+* Input
+  * `orderID`: id of the order to accept
+* Output (JSON)
+  * `error`: whether an error occured (boolean)
+  * `body`: description of the error or success
+
+`POST /order/start` (Start delivering a particular order )
+* Input
+  * `orderID`: id of the order to start
+* Output (JSON)
+  * `error`: whether an error occured (boolean)
+  * `body`: description of the error or success
+
+`POST /order/confirm` (Confirm delivery of a particular order)
+* Input
+  * `orderID`: id of the order to confirm
+* Output (JSON)
+  * `error`: whether an error occured (boolean)
+  * `body`: description of the error or success
+
+`POST /order/submitReview` (Submit a review of peer for a particular order)
+* Input
+  * `orderID`: id of the order to start
+  * `stars`: number of stars (5 is best)
+  * `comment`: comment on quality
+* Output (JSON)
+  * `error`: whether an error occured (boolean)
+  * `body`: description of the error or success
 
 
 
