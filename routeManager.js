@@ -21,5 +21,6 @@ var orderRoute = require('./routes/orders');
 
 router.get('/orders', orderRoute.getOrders);
 router.get('/orders/all', orderRoute.getAll);
+router.post('/orders/submitReview', orderRoute.submitOrderReview);
 
 module.exports = router;

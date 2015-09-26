@@ -27,56 +27,63 @@ exports.submitOrderReview = function(req, res, next) {
         res.json({error: true, body: "Invalid Request"});
     } else if (!req.body.orderID) {
         res.json({error: true, body: "An orderID is required"});
-    } else if (!req.body.stars && req.body.isInteger() && req.body.stars >= 0 && req.body.stars <= 5) {
-        res.json({error: true, body: "An orderID is required"});
+    } else if (!req.body.stars || req.body.stars < 0 && req.body.stars > 5) {
+        res.json({error: true, body: "A 'X stars' rating is required"});
     } else if (!req.body.comment) {
-        res.json({error: true, body: "An orderID is required"});
+        res.json({error: true, body: "A comment is required"});
     }   else {
-        token = token_config.checkRouteForToken(req,res);
-        if (token) {
-            Order.findById(orderID, function(err, order) {
-                if (err) {
-                    res.json({error: error, body: err});
+        token_config.checkRouteForToken(req,res,
+            submitOrderReviewCallback
+        );
+    }
+};
+
+var submitOrderReviewCallback = function (req, res, token) {
+    var orderID = req.body.orderID;
+
+    if (token) {
+        Order.findById(orderID, function(err, order) {
+            if (err) {
+                res.json({error: true, body: err});
+            }
+            if (order.reviews.length >= 2) {
+                res.json({error: true, body: "You can't add another review, you can change your old one though"});
+            } else {
+                if (order.customer != token._id && order.deliverer != token._id) {
+                    //neither of the people placed this order
+                    res.json({error: true, body: "You are not involved with this order"});
+                    return;
                 }
-                if (order.reviews.length >= 2) {
-                    res.json({error: true, body: "You can't add another review, you can change your old one though"});
-                } else {
-                    if (order.customer != token._id && order.deliverer != token._id) {
-                        //neither of the people placed this order
-                        res.json({error: true, body: "You are not involved with this order"});
+                //the owner of this token is somehow involved
+                order.reviews.forEach(function(review) {
+                    if (review.customer == token._id || review.deliverer == token._id) {
+                        res.json({error: true, body: "You can't add another review, you can change your old one though"});
                         return;
                     }
-                    //the owner of this token is somehow involved
-                    order.reviews.forEach(function(review) {
-                        if (review.customer == token._id || review.deliverer == token._id) {
-                            res.json({error: true, body: "You can't add another review, you can change your old one though"});
-                            return;
-                        }
-                    });
+                });
 
-                    var type = forDeliver;
-                    if (order.customer == token._id) {
-                        //the customer is submitting a review
-                        type = forCustomer;
-                    }
-
-                    var rev = new Review();
-                    rev.type = type;
-                    rev.stars = req.body.stars;
-                    rev.comment = req.body.comment;
-                    rev.customer = order.customer;
-                    rev.deliverer = order.deliverer;
-
-                    rev.save(function(err) {
-                        if (err) {
-                            res.json({error: true, body: err})
-                        }
-                        res.json({error: false, body: "Successfully created review"});
-                    });
+                var type = forDeliver;
+                if (order.customer == token._id) {
+                    //the customer is submitting a review
+                    type = forCustomer;
                 }
-            });
-        } else {
-            res.json({error: true, body: "You can't eat your puddin' if you don't have any tokens"});
-        }
+
+                var rev = new Review();
+                rev.type = type;
+                rev.stars = req.body.stars;
+                rev.comment = req.body.comment;
+                rev.customer = order.customer;
+                rev.deliverer = order.deliverer;
+
+                rev.save(function(err) {
+                    if (err) {
+                        res.json({error: true, body: err})
+                    }
+                    res.json({error: false, body: "Successfully created review"});
+                });
+            }
+        });
+    } else {
+        res.json({error: true, body: "You can't eat your puddin' if you don't have any tokens"});
     }
 }
