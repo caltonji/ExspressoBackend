@@ -4,7 +4,7 @@
 var crypto = require('crypto');
 
 function createSalt(data) {
-     return data.substring(0, username.length/2);
+     return data.substring(0, data.length/2);
 }
 
 function myHash(data) {

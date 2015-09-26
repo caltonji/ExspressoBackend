@@ -6,7 +6,7 @@ var hashing = require('../config/hash');
 var jwt = require('jsonwebtoken');
 var token_config = require('../config/token');
 
-exports.login = function(req, res, next) {
+var login = function(req, res, next) {
     if (!req.body || !req.body.email || !req.body.password) {
         res.json({error: true, body: "Invalid Request"});
     } else {
@@ -17,10 +17,10 @@ exports.login = function(req, res, next) {
                 if (users.length == 0) {
                     res.json({error: true, body: "Invalid Email/Password"});
                 } else {
-                    for (u in users) {
+                    for (var i = 0; i < users.length; i++) {
+                        u = users[i];
                         var potentialHash = hashing.calculateHash(u.passwordSalt + req.body.password);
                         if (u.passwordHash == potentialHash) {
-                            //we matched a user
                             u.passwordHash = null;
                             u.passwordSalt = null;
 
@@ -29,12 +29,14 @@ exports.login = function(req, res, next) {
                             res.json({error: false, body: "Yay! I will now send you a token", token: token});
                         }
                     }
-                    res.json({error: true, body: "No users found"});
+                    res.json({error: true, body: "Invalid Email/Password"});
                 }
             }
         });
     }
 };
+
+exports.login = login;
 
 exports.register = function(req, res, next) {
     if (!req.body) {
@@ -54,6 +56,7 @@ exports.register = function(req, res, next) {
             if (err) {
                 res.send(err);
             } else {
+                console.log(users);
                 if (users.length > 0) {
                     res.json({error: true, body: "This Email already exists"});
                 } else {
@@ -67,13 +70,16 @@ exports.register = function(req, res, next) {
                     user.passwordSalt = hashing.createSalt(req.body.email);
                     user.passwordHash = hashing.calculateHash(user.passwordSalt + req.body.password);
 
+                    console.log("hello world");
+
                     user.save(function(err) {
                         if (err) {
                             res.json({error: true, body: err})
                         }
-                        this.login(req, res, next);
+                        console.log("Got Here");
+                        login(req, res, next);
                     });
-                    res.json({error: true, body: "No users found"});
+                    //res.json({error: true, body: "No users found"});
                 }
             }
         });

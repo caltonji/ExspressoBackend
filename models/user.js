@@ -13,8 +13,8 @@ var UserSchema = new Schema({
     phoneNumber: {type: String, required: true},
     passwordHash: {type: String, required: true},
     passwordSalt: {type: String, required: true},
-    currentRating: {type: Number, required: true},
-    amountOfRatings: {type: Number, required: true},
+    currentRating: {type: Number, default: 0},
+    amountOfRatings: {type: Number, default: 0},
     dateCreated: {type: Date, default: Date.now},
     lastLogin: {type: Date, default: Date.now}
 });
