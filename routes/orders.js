@@ -6,13 +6,11 @@ var mongoose = require('mongoose');
 
 var Order = mongoose.model('Order');
 var MenuItem = mongoose.model('MenuItem');
-var OrderItem = mongoose.model('OrderItem');
 
 var ObjectId = require('mongoose').Types.ObjectId;
 
 /* Neither of these are correct */
 
-var Order = require('../models/order');
 var Review = require('../models/review');
 var token_config = require('../config/token');
 
@@ -33,8 +31,6 @@ exports.get = function(req, res, next) {
                 res.json({error: true, body:"illegal numOrders value"});
                 return;
             }
-
-
 
             var statusType = req.query.statusType;
             var orderStatusTypes = 'Created Accepted InProgress Completed CanceledUser CanceledSys Failed'.split(' ');
@@ -74,7 +70,7 @@ exports.get = function(req, res, next) {
                 queryJson = {
                     "_id": order
                 };
-                var fieldsString = "status customer deliverer dateLastStatusChange tip reviews location";
+                fieldsString = "status customer deliverer dateLastStatusChange tip reviews location";
                 numOrders = 1;
             } else if (checkID(customer) < 0) {
                 res.json({error: true, body: "bad order id"});
@@ -86,14 +82,12 @@ exports.get = function(req, res, next) {
                 if (err) {
                     res.json({error: true, body: "error in accessing db"});
                 } else {
-                    
 
+                    console.log(posts);
 
-
-
-
-
-                    res.json({error:false, body:null, orders:posts});
+                    updateMenuItemsForOrderList(posts, function(postsWithMenuItems) {
+                        res.json({error:false, body:null, orders:postsWithMenuItems});
+                    });
                 }
             });
         } else {
@@ -102,6 +96,43 @@ exports.get = function(req, res, next) {
     });
 }
 
+var updateMenuItemsForOrderList = function(orders, callback) {
+    var updated = 0;
+    for (var i = 0; i < orders.length; i++) {
+        updateMenuItemsForItemList(orders[i].items, function(items) {
+            orders[i].items = items;
+            if (++updated == orders.length) {
+                callback(orders);
+            }
+        });
+
+    }
+}
+
+var updateMenuItemsForItemList = function(items, callback) {
+    var updated = 0;
+    for (var i = 0; i < items.length; i++) {
+        if (items[i] && checkID("" + items[i].menuItem) > 0) {
+            MenuItem.findOne({_id : new ObjectId(items[i].menuItem)}, function(err, doc) {
+                if (err) {
+                    callback(false);
+                    return;
+                } else {
+                    items[i].menuItem = doc;
+                    if (++updated == items.length) {
+                        callback(items);
+                    }
+                }
+            });
+        } else {
+            updated++;
+            i++;
+            if (++updated == items.length) {
+                callback(items);
+            }
+        }
+    }
+}
 exports.new = function(req, res, next) {
     token_config.checkRouteForToken(req,res, function(req, res, token) {
         if (token) {
@@ -164,22 +195,13 @@ var checkItems = function(items, callback) {
                 callback(null);
                 return;
             }
-            var orderItem = new OrderItem();
+            var orderItem = {};
             orderItem.menuItem = doc;
-            orderItem.size = item.size; //TODO: figure out why this is returning null
-            console.log("about to save");
-            orderItem.save(function (err, savedItem) {
-                if (err) {
-                    console.log("error: ", err);
-                    callback(null);
-                    return;
-                }
-                order_items[i] = savedItem;
-                console.log("got here");
-                if (++inserted == items.length) {
-                    callback(order_items);
-                }
-            });
+            orderItem.size = item.size;
+            order_items.push(orderItem);
+            if (++inserted == items.length) {
+                callback(order_items);
+            }
         });
     }
 }
@@ -189,7 +211,7 @@ exports.submitOrderReview = function(req, res, next) {
     //route to submit a review
     if (!req.body) {
         res.json({error: true, body: "Invalid Request"});
-    } else if (!req.body.orderID) {
+    } else if (checkID(req.body.orderID) > 0) {
         res.json({error: true, body: "An orderID is required"});
     } else if (!req.body.stars || req.body.stars < 0 && req.body.stars > 5) {
         res.json({error: true, body: "A 'X stars' rating is required"});
@@ -276,7 +298,7 @@ var submitOrderReviewCallback = function (req, res, token) {
 exports.cancel = function(req, res, next) {
     token_config.checkRouteForToken(req,res, function(req, res, token) {
         if (token) {
-            if (!req.body.orderID) {
+            if (checkID(req.body.orderID) > 0) {
                 res.json({error:true, body: "Order ID is required"});
             } else {
                 Order.findById(req.body.orderID, function(err, order) {
@@ -334,7 +356,7 @@ exports.cancel = function(req, res, next) {
 exports.accept = function(req, res, next) {
     token_config.checkRouteForToken(req,res, function(req, res, token) {
         if (token) {
-            if (!req.body.orderID) {
+            if (checkID(req.body.orderID) > 0) {
                 res.json({error:true, body: "Order ID is required"});
             } else {
                 Order.findById(req.body.orderID, function(err, order) {
@@ -369,7 +391,7 @@ exports.accept = function(req, res, next) {
 exports.start = function(req, res, next) {
     token_config.checkRouteForToken(req,res, function(req, res, token) {
         if (token) {
-            if (!req.body.orderID) {
+            if (checkID(req.body.orderID) > 0) {
                 res.json({error:true, body: "Order ID is required"});
             } else {
                 Order.findById(req.body.orderID, function(err, order) {
@@ -403,7 +425,7 @@ exports.start = function(req, res, next) {
 exports.confirm = function(req, res, next) {
     token_config.checkRouteForToken(req,res, function(req, res, token) {
         if (token) {
-            if (!req.body.orderID) {
+            if (checkID(req.body.orderID) > 0) {
                 res.json({error:true, body: "Order ID is required"});
             } else {
                 Order.findById(req.body.orderID, function(err, order) {
