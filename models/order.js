@@ -21,7 +21,7 @@ var OrderSchema = new Schema({
     deliverer: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
     location: {type: String, required: true},
     notes: {type: String, required: true},
-    tip: {type: Number, required: true},
+    tip: {type: Number, required: true, min: 50},
     reviews: [
         {type: mongoose.Schema.Types.ObjectId, ref: 'Review'}
     ]

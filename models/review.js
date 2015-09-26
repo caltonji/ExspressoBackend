@@ -8,7 +8,7 @@ var ReviewTypes = 'forCustomer forDeliver'.split(' ');
 
 var ReviewSchema = new Schema({
     type: {type: String, enum: ReviewTypes},
-    stars: {type: Number, required: true},
+    stars: {type: Number, required: true, min: 0, max: 5},
     comment: {type: String, required: true},
     dateCreated: {type: Date, default: Date.now},
     customer: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
