@@ -24,7 +24,10 @@ var OrderSchema = new Schema({
     notes: {type: String, default: ""},
     tip: {type: Number, required: true, min: 50},
     reviews: [
-        {type: mongoose.Schema.Types.ObjectId, ref: 'Review'}
+        {
+            review_id: {type: mongoose.Schema.Types.ObjectId, ref: 'Review'},
+            submitted_by: {type: mongoose.Schema.Types.ObjectId, ref: 'User'}
+        }
     ]
 });
 

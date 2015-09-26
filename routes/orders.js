@@ -87,10 +87,13 @@ exports.new = function(req, res, next) {
                 res.json({error:true, body: "Orders need a tip"});
             } else {
                 checkItems(req.body.items, function(orderItems) {
+                    console.log(orderItems);
                     var order = new Order();
                     order.items = orderItems;
-                    if (!order.items)
+                    if (!order.items) {
                         res.json({error:true, body: "Problem with items"});
+                        return;
+                    }
                     order.customer = token._id;
                     order.location = req.body.location;
                     order.tip = req.body.tip;
@@ -101,7 +104,7 @@ exports.new = function(req, res, next) {
                         if (err) {
                             res.json({error: true, body: err});
                         }
-                        res.json({error:false,body:null,SavedOrder: savedOrder});
+                        res.json({error:false, body:null, SavedOrder: savedOrder});
                     });
 
                 })
@@ -140,7 +143,7 @@ var checkItems = function(items, callback) {
             }
             var orderItem = new OrderItem();
             orderItem.menuItem = doc;
-            orderItem.size = item.size;
+            orderItem.size = item.size; //TODO: figure out why this is returning null
             console.log("about to save");
             orderItem.save(function (err, savedItem) {
                 if (err) {
@@ -155,67 +158,6 @@ var checkItems = function(items, callback) {
                 }
             });
         });
-    }
-}
-
-
-exports.submitOrderReview = function (req, res, next) {
-    //route to submit a review
-    if (!req.body) {
-        res.json({error: true, body: "Invalid Request"});
-    } else if (!req.body.orderID) {
-        res.json({error: true, body: "An orderID is required"});
-    } else if (!req.body.stars && req.body.isInteger() && req.body.stars >= 0 && req.body.stars <= 5) {
-        res.json({error: true, body: "An orderID is required"});
-    } else if (!req.body.comment) {
-        res.json({error: true, body: "An orderID is required"});
-    } else {
-        token = token_config.checkRouteForToken(req, res);
-        if (token) {
-            Order.findById(orderID, function (err, order) {
-                if (err) {
-                    res.json({error: error, body: err});
-                }
-                if (order.reviews.length >= 2) {
-                    res.json({error: true, body: "You can't add another review, you can change your old one though"});
-                } else {
-                    if (order.customer != token._id && order.deliverer != token._id) {
-                        //neither of the people placed this order
-                        res.json({error: true, body: "You are not involved with this order"});
-                        return;
-                    }
-                    //the owner of this token is somehow involved
-                    order.reviews.forEach(function (review) {
-                        if (review.customer == token._id || review.deliverer == token._id) {
-                            res.json({error: true, body: "You can't add another review, you can change your old one though"});
-                            return;
-                        }
-                    });
-
-                    var type = forDeliver;
-                    if (order.customer == token._id) {
-                        //the customer is submitting a review
-                        type = forCustomer;
-                    }
-
-                    var rev = new Review();
-                    rev.type = type;
-                    rev.stars = req.body.stars;
-                    rev.comment = req.body.comment;
-                    rev.customer = order.customer;
-                    rev.deliverer = order.deliverer;
-
-                    rev.save(function (err) {
-                        if (err) {
-                            res.json({error: true, body: err})
-                        }
-                        res.json({error: false, body: "Successfully created review"});
-                    });
-                }
-            });
-        } else {
-            res.json({error: true, body: "You can't eat your puddin' if you don't have any tokens"});
-        }
     }
 }
 
@@ -244,45 +186,184 @@ var submitOrderReviewCallback = function (req, res, token) {
         Order.findById(orderID, function(err, order) {
             if (err) {
                 res.json({error: true, body: err});
+                return;
             }
-            if (order.reviews.length >= 2) {
-                res.json({error: true, body: "You can't add another review, you can change your old one though"});
-            } else {
-                if (order.customer != token._id && order.deliverer != token._id) {
-                    //neither of the people placed this order
-                    res.json({error: true, body: "You are not involved with this order"});
-                    return;
-                }
-                //the owner of this token is somehow involved
-                order.reviews.forEach(function(review) {
-                    if (review.customer == token._id || review.deliverer == token._id) {
-                        res.json({error: true, body: "You can't add another review, you can change your old one though"});
+            if (order) {
+                if (order.reviews.length >= 2) {
+                    res.json({error: true, body: "You can't add another review, you can change your old one though"});
+                } else {
+                    if (order.customer != token._id && order.deliverer != token._id) {
+                        //neither of the people placed this order
+                        res.json({error: true, body: "You are not involved with this order"});
                         return;
                     }
-                });
+                    //the owner of this token is somehow involved
+                    order.reviews.forEach(function(review) {
+                        if (review.submitted_by == token._id) {
+                            res.json({error: true, body: "You can't add another review, you can change your old one though"});
+                            return;
+                        }
+                    });
 
-                var type = forDeliver;
-                if (order.customer == token._id) {
-                    //the customer is submitting a review
-                    type = forCustomer;
-                }
-
-                var rev = new Review();
-                rev.type = type;
-                rev.stars = req.body.stars;
-                rev.comment = req.body.comment;
-                rev.customer = order.customer;
-                rev.deliverer = order.deliverer;
-
-                rev.save(function(err) {
-                    if (err) {
-                        res.json({error: true, body: err})
+                    var type = "forDeliver";
+                    if (order.customer == token._id) {
+                        //the customer is submitting a review
+                        type = "forCustomer";
                     }
-                    res.json({error: false, body: "Successfully created review"});
-                });
+
+                    var rev = new Review();
+                    rev.type = type;
+                    rev.stars = req.body.stars;
+                    rev.comment = req.body.comment;
+                    rev.customer = order.customer;
+                    rev.deliverer = order.deliverer;
+
+                    order.reviews.push({
+                        review_id: rev._id,
+                        submitted_by: token._id
+                    });
+
+                    rev.save(function(err) {
+                        if (err) {
+                            res.json({error: true, body: err})
+                            return;
+                        }
+                        order.save(function(err) {
+                            if (err) {
+                                res.json({error: true, body: err})
+                            }
+                            res.json({error: false, body: "Successfully created review"});
+                        });
+                    });
+                }
+            } else {
+                res.json({error: true, body: "No order exists of this type"});
             }
         });
     } else {
         res.json({error: true, body: "You can't eat your puddin' if you don't have any tokens"});
     }
-}
+};
+
+exports.cancel = function(req, res, next) {
+    token_config.checkRouteForToken(req,res, function(req, res, token) {
+        if (token) {
+            if (!req.body.orderID) {
+                res.json({error:true, body: "Order ID is required"});
+            } else if (!req.body.source) {
+                res.json({error:true, body: "Source is required"});
+            } else {
+                Order.findById(req.body.orderID, function(err, order) {
+                    if (err) {
+                        res.json({error: true, body: err});
+                    } else {
+                        if (order.customer == user || order.deliverer == user) {
+                            if (order.status == "Created") {
+                                //does not yet have a deliverer so lets just delete it
+                                Order.remove({
+                                    _id: req.body.orderID
+                                }, function(err, order) {
+                                    if (err) {
+                                        res.send({error: true, body: err});
+                                    }
+                                    res.json({ error: false, body: 'Successfully deleted' });
+                                });
+                            } else {
+                                if (order.deliverer == token._id) {
+                                    order.deliverer = null;
+                                    order.dateAccepted = null;
+                                    order.dateCompleted = null;
+                                    order.dateLastStatusChange = new Date();
+                                    order.status = "Created";
+                                    //TODO: alert customer and put it back on queue
+                                    order.save(function(err) {
+                                        if (err) {
+                                            res.json({error: true, body: err})
+                                        }
+                                        res.json({error: false, body: ""});
+                                        return;
+                                    });
+                                } else {
+                                    //TODO: alert customer that they will still be charged
+                                }
+                            }
+                            //order.status = source == "user" ? "CanceledUser" : "CanceledSys";
+                            order.dateLastStatusChange = new Date();
+                        } else {
+                            res.json({error: true, body: "Forbidden"});
+                        }
+                    }
+                });
+            }
+        } else {
+            res.json({error: true, body: "no token, big problem"});
+        }
+    });
+};
+
+exports.accept = function(req, res, next) {
+    token_config.checkRouteForToken(req,res, function(req, res, token) {
+        if (token) {
+            if (!req.body.orderID) {
+                res.json({error:true, body: "Order ID is required"});
+            } else {
+                Order.findById(req.body.orderID, function(err, order) {
+                    if (err) {
+                        res.json({error: true, body: err});
+                    } else {
+                        if (order.status == "Created") {
+                            order.status = "Accepted";
+                            order.dateAccepted = new Date();
+                            order.deliverer = token._id;
+                            //TODO: let the customer know their order has been accepted (push notifications?)
+                            order.save(function(err) {
+                                if (err) {
+                                    res.json({error: true, body: err})
+                                }
+                                res.json({error: false, body: ""});
+                                return;
+                            });
+                        } else {
+                            res.json({error: true, body: "not applicable"});
+                        }
+                    }
+                });
+            }
+        } else {
+            res.json({error: true, body: "no token, big problem"});
+        }
+    });
+};
+
+exports.start = function(req, res, next) {
+    token_config.checkRouteForToken(req,res, function(req, res, token) {
+        if (token) {
+            if (!req.body.orderID) {
+                res.json({error:true, body: "Order ID is required"});
+            } else {
+                Order.findById(req.body.orderID, function(err, order) {
+                    if (err) {
+                        res.json({error: true, body: err});
+                    } else {
+                        if (order.deliverer == token._id && order.status == "Accepted") {
+                            order.status = "InProgress";
+                            order.dateLastStatusChange = new Date();
+                            //TODO: let the customer know their order is in progress(push notifications?)
+                            order.save(function(err) {
+                                if (err) {
+                                    res.json({error: true, body: err})
+                                }
+                                res.json({error: false, body: ""});
+                                return;
+                            });
+                        } else {
+                            res.json({error: true, body: "not applicable"});
+                        }
+                    }
+                });
+            }
+        } else {
+            res.json({error: true, body: "no token, big problem"});
+        }
+    });
+};
