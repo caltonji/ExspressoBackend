@@ -22,6 +22,11 @@ var orderRoute = require('./routes/orders');
 router.get('/orders', orderRoute.get);
 router.post('/orders/new', orderRoute.new);
 
+router.post('/orders/cancel', orderRoute.cancel);
+router.post('/orders/accept', orderRoute.accept);
+router.post('/orders/start', orderRoute.start);
+router.post('/orders/confirm', orderRoute.confirm);
+
 router.post('/orders/submitReview', orderRoute.submitOrderReview);
 
 

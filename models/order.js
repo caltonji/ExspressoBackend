@@ -28,7 +28,12 @@ var OrderSchema = new Schema({
             review_id: {type: mongoose.Schema.Types.ObjectId, ref: 'Review'},
             submitted_by: {type: mongoose.Schema.Types.ObjectId, ref: 'User'}
         }
-    ]
+    ],
+    star_count: {type: Number, default: 0},
+    confirmations: {
+        customer: {type: Boolean, default: false},
+        deliverer: {type: Boolean, default: false}
+    }
 });
 
 var Order = mongoose.model("Order", OrderSchema);

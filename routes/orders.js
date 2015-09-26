@@ -16,7 +16,6 @@ var Order = require('../models/order');
 var Review = require('../models/review');
 var token_config = require('../config/token');
 
-//TODO: Add support for paging, add support for multiple options of status types
 exports.get = function(req, res, next) {
     token_config.checkRouteForToken(req,res, function(req, res, token) {
         if (token) {
@@ -24,7 +23,7 @@ exports.get = function(req, res, next) {
 
             var queryJson = {};
             var sortJson = {'dateCreated': -1};
-            var fieldsString = "status dateLastStatusChange tip reviews location";
+            var fieldsString = "status dateLastStatusChange items tip star_count location";
 
             var numOrders = req.query.numOrders;
 
@@ -35,37 +34,65 @@ exports.get = function(req, res, next) {
                 return;
             }
 
+
+
             var statusType = req.query.statusType;
             var orderStatusTypes = 'Created Accepted InProgress Completed CanceledUser CanceledSys Failed'.split(' ');
 
             if (statusType && orderStatusTypes.indexOf(statusType) > -1)
                 queryJson.status = statusType;
 
-            var customer = req.query.customer;
-            if (customer) {
-                if (ObjectId.isValid(customer)) {
-                    queryJson.customer = new ObjectId(customer);
-                } else {
-                    res.json({error: true, body: "bad customer value"});
-                    return;
-                }
-            }
 
+
+            var customer = req.query.customer;
+            if (checkID(customer) > 0) {
+                queryJson.customer = new ObjectId(customer);
+            } else if (checkID(customer) < 0) {
+                res.json({error: true, body: "bad customer value"});
+                return;
+            }
 
             var deliverer = req.query.deliverer;
-            if (deliverer) {
-                if (ObjectId.isValid(deliverer)) {
-                    queryJson.deliverer = new ObjectId(deliverer);
-                } else {
-                    res.json({error:true,body:"bad deliverer value"});
-                    return;
-                }
+            if (checkID(deliverer) > 0) {
+                queryJson.deliverer = new ObjectId(deliverer);
+            } else if (checkID(customer) < 0) {
+                res.json({error:true,body:"bad deliverer value"});
+                return;
             }
+
+
+            var after = req.query.after;
+            if (checkID(after) > 0) {
+                queryJson._id = {$lt: new ObjectId(after)};
+            } else if (checkID(customer) < 0) {
+                res.json({error: true, body: "bad after value"});
+                return;
+            }
+
+            var order = req.query.orderID;
+            if (checkID(order) > 0) {
+                queryJson = {
+                    "_id": order
+                };
+                var fieldsString = "status customer deliverer dateLastStatusChange tip reviews location";
+                numOrders = 1;
+            } else if (checkID(customer) < 0) {
+                res.json({error: true, body: "bad order id"});
+                return;
+            }
+
             //requesting for all users
             Order.find(queryJson).sort(sortJson).limit(numOrders).select(fieldsString).exec(function (err, posts) {
                 if (err) {
                     res.json({error: true, body: "error in accessing db"});
                 } else {
+                    
+
+
+
+
+
+
                     res.json({error:false, body:null, orders:posts});
                 }
             });
@@ -74,7 +101,6 @@ exports.get = function(req, res, next) {
         }
     });
 }
-
 
 exports.new = function(req, res, next) {
     token_config.checkRouteForToken(req,res, function(req, res, token) {
@@ -87,7 +113,6 @@ exports.new = function(req, res, next) {
                 res.json({error:true, body: "Orders need a tip"});
             } else {
                 checkItems(req.body.items, function(orderItems) {
-                    console.log(orderItems);
                     var order = new Order();
                     order.items = orderItems;
                     if (!order.items) {
@@ -98,8 +123,6 @@ exports.new = function(req, res, next) {
                     order.location = req.body.location;
                     order.tip = req.body.tip;
 
-
-                    console.log("order: " + order);
                     order.save(function(err, savedOrder) {
                         if (err) {
                             res.json({error: true, body: err});
@@ -126,7 +149,7 @@ var checkItems = function(items, callback) {
     console.log("going to do something");
     for (i = 0; i < items.length; i++) {
         var item = items[i];
-        if (!item.menuItem || !item.size) {
+        if (checkID(item.menuItem) <= 0 || !item.size) {
             callback(null);
             return;
         }
@@ -223,6 +246,11 @@ var submitOrderReviewCallback = function (req, res, token) {
                         submitted_by: token._id
                     });
 
+                    if (isNumber(stars))
+                        order.star_count += rev.stars;
+
+                    //TODO: update the user rating with the new review
+
                     rev.save(function(err) {
                         if (err) {
                             res.json({error: true, body: err})
@@ -250,14 +278,12 @@ exports.cancel = function(req, res, next) {
         if (token) {
             if (!req.body.orderID) {
                 res.json({error:true, body: "Order ID is required"});
-            } else if (!req.body.source) {
-                res.json({error:true, body: "Source is required"});
             } else {
                 Order.findById(req.body.orderID, function(err, order) {
                     if (err) {
                         res.json({error: true, body: err});
                     } else {
-                        if (order.customer == user || order.deliverer == user) {
+                        if (order.customer == token._id || order.deliverer == token._id) {
                             if (order.status == "Created") {
                                 //does not yet have a deliverer so lets just delete it
                                 Order.remove({
@@ -270,6 +296,10 @@ exports.cancel = function(req, res, next) {
                                 });
                             } else {
                                 if (order.deliverer == token._id) {
+                                    if (order.status == "Completed") {
+                                        res.json({error:true, body: "Cannot cancel completed order"});
+                                        return;
+                                    }
                                     order.deliverer = null;
                                     order.dateAccepted = null;
                                     order.dateCompleted = null;
@@ -278,7 +308,8 @@ exports.cancel = function(req, res, next) {
                                     //TODO: alert customer and put it back on queue
                                     order.save(function(err) {
                                         if (err) {
-                                            res.json({error: true, body: err})
+                                            res.json({error: true, body: err});
+                                            return;
                                         }
                                         res.json({error: false, body: ""});
                                         return;
@@ -287,7 +318,6 @@ exports.cancel = function(req, res, next) {
                                     //TODO: alert customer that they will still be charged
                                 }
                             }
-                            //order.status = source == "user" ? "CanceledUser" : "CanceledSys";
                             order.dateLastStatusChange = new Date();
                         } else {
                             res.json({error: true, body: "Forbidden"});
@@ -311,7 +341,7 @@ exports.accept = function(req, res, next) {
                     if (err) {
                         res.json({error: true, body: err});
                     } else {
-                        if (order.status == "Created") {
+                        if (order.status == "Created" && order.customer != token._id) {
                             order.status = "Accepted";
                             order.dateAccepted = new Date();
                             order.deliverer = token._id;
@@ -319,6 +349,7 @@ exports.accept = function(req, res, next) {
                             order.save(function(err) {
                                 if (err) {
                                     res.json({error: true, body: err})
+                                    return;
                                 }
                                 res.json({error: false, body: ""});
                                 return;
@@ -352,6 +383,7 @@ exports.start = function(req, res, next) {
                             order.save(function(err) {
                                 if (err) {
                                     res.json({error: true, body: err})
+                                    return;
                                 }
                                 res.json({error: false, body: ""});
                                 return;
@@ -367,3 +399,72 @@ exports.start = function(req, res, next) {
         }
     });
 };
+
+exports.confirm = function(req, res, next) {
+    token_config.checkRouteForToken(req,res, function(req, res, token) {
+        if (token) {
+            if (!req.body.orderID) {
+                res.json({error:true, body: "Order ID is required"});
+            } else {
+                Order.findById(req.body.orderID, function(err, order) {
+                    if (err) {
+                        res.json({error: true, body: err});
+                    } else {
+                        if ((order.deliverer == token._id || order.customer == token._id) && order.status == "InProgress") {
+                            var changed = false;
+                            if (order.confirmations.customer || order.customer == token._id) {
+                                order.confirmations.customer = true;
+                                changed = true;
+                            } else if (order.confirmations.deliverer || order.deliverer == token._id) {
+                                order.confirmations.deliverer = true;
+                                changed = true;
+                            }
+
+                            if (order.confirmations.customer && order.confirmations.deliverer) {
+                                order.status = "Completed";
+                            }
+
+                            if (changed) {
+                                order.save(function(err) {
+                                    if (err) {
+                                        res.json({error: true, body: err});
+                                        return;
+                                    }
+
+                                    //TODO: Alert both parties that someone has confirmed the results!
+                                    res.json({error: false, body: ""});
+                                    return;
+                                });
+                            }
+
+                        } else {
+                            res.json({error: true, body: "not applicable"});
+                        }
+                    }
+                });
+            }
+        } else {
+            res.json({error: true, body: "no token, big problem"});
+        }
+    });
+}
+
+
+
+/*
+function to check if ID is valid
+returns 1 if is valid
+returns 0 if ID was null
+returns -1 if ID is invalid
+ */
+
+function checkID(d){
+    if (d) {
+        if (ObjectId.isValid(d)) {
+            return 1;
+        } else {
+            return -1;
+        }
+    }
+    return 0;
+}
