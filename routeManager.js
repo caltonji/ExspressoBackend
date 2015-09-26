@@ -17,7 +17,9 @@ Info about the user routes will go here
  */
 var userRoutes = require('./routes/users');
 router.get('/me',userRoutes.myInfo);
-
+router.post('/checkIn', userRoutes.checkIn);
+router.post('/checkOut', userRoutes.checkOut);
+router.get('/activeDeliverers', userRoutes.currentActive);
 
 /*
     Order Routing will go here

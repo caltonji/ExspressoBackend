@@ -16,7 +16,8 @@ var UserSchema = new Schema({
     currentRating: {type: Number, default: 0},
     amountOfRatings: {type: Number, default: 0},
     dateCreated: {type: Date, default: Date.now},
-    lastLogin: {type: Date, default: Date.now}
+    lastLogin: {type: Date, default: Date.now},
+    deliverActive: {type: Boolean, default: false} //deliverActive = 0 = not waiting for deliveries, 1 = waiting on deliveries
 });
 
 var User = mongoose.model("User", UserSchema);
