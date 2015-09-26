@@ -5,6 +5,16 @@ var express = require('express');
 var router = express.Router();
 
 /*
+ Registration Routing will go here
+ */
+var logRoute = require('./routes/registration_login');
+
+router.post('/login', logRoute.login);
+router.post('/register', logRoute.register);
+
+
+
+/*
     Order Routing will go here
  */
 var orderRoute = require('./routes/orders');

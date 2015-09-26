@@ -3,13 +3,17 @@
  */
 var crypto = require('crypto');
 
-function myHash(username, password) {
+function createSalt(data) {
+     return data.substring(0, username.length/2);
+}
+
+function myHash(data) {
     var encrypt = crypto.createHash('sha512');
-    var data = username.substring(0, username.length/2) + password; //TODO: may want to change the salt
     encrypt.update(data);
     return encrypt.digest('hex');
 }
 
 module.exports = {
-    calculateHash: myHash
+    calculateHash: myHash,
+    createSalt: createSalt
 };
