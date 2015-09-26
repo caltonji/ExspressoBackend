@@ -19,8 +19,16 @@ router.post('/register', logRoute.register);
  */
 var orderRoute = require('./routes/orders');
 
-router.get('/orders', orderRoute.getOrders);
-router.get('/orders/all', orderRoute.getAll);
+router.get('/orders', orderRoute.get);
+router.post('/orders/new', orderRoute.new);
+
 router.post('/orders/submitReview', orderRoute.submitOrderReview);
+
+
+/*
+    Populating Database routes will go here
+ */
+var menuItemRoutes = require('./routes/menuItems');
+router.get('/populate', menuItemRoutes.makeMenuItem);
 
 module.exports = router;

@@ -9,10 +9,11 @@ var orderStatusTypes = 'Created Accepted InProgress Completed CanceledUser Cance
 var blameTypes = 'DeliverAccepted CustomerAccepted DeliverNoAccept CustomerNoAccept Both'.split(' ');
 
 var OrderSchema = new Schema({
-    status: {type: String, enum: orderStatusTypes},
+    status: {type: String, enum: orderStatusTypes, default: 'Created'},
     dateCreated: {type: Date, default: Date.now},
     dateAccepted: {type: Date},
     dateCompleted: {type: Date},
+    dateLastStatusChange: {type: Date, default: Date.now},
     blame: {type: String, enum: blameTypes},
     items: [
         {type: mongoose.Schema.Types.ObjectId, ref: 'OrderItem'}
@@ -20,7 +21,7 @@ var OrderSchema = new Schema({
     customer: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
     deliverer: {type: mongoose.Schema.Types.ObjectId, ref: 'User'},
     location: {type: String, required: true},
-    notes: {type: String, required: true},
+    notes: {type: String, default: ""},
     tip: {type: Number, required: true, min: 50},
     reviews: [
         {type: mongoose.Schema.Types.ObjectId, ref: 'Review'}
